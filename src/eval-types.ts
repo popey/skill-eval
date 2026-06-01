@@ -56,9 +56,9 @@ export interface EvalScenario {
   criteria: EvalCriterion[];
 }
 
-/** Final result for one tile's eval run */
+/** Final result for one plugin's eval run */
 export interface EvalResult {
-  tilePath: string;
+  pluginPath: string;
   runId: string;
   status: 'completed' | 'failed' | 'timeout';
   overallScore: number;

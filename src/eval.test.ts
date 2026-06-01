@@ -225,7 +225,7 @@ describe('runEval', () => {
     Bun.spawn = makeMockSpawn('', 'auth failed', 1);
 
     const { runEval } = await import('./eval-run.ts');
-    const result = await runEval('/some/tile', 'my-ws', 'claude:claude-sonnet-4-6', 1);
+    const result = await runEval('/some/plugin', 'my-ws', 'claude:claude-sonnet-4-6', 1);
     expect(result.status).toBe('failed');
     expect(result.error).toContain('auth failed');
   });
@@ -235,7 +235,7 @@ describe('runEval', () => {
     Bun.spawn = makeMockSpawn('no json here', '', 0);
 
     const { runEval } = await import('./eval-run.ts');
-    const result = await runEval('/some/tile', 'my-ws', 'claude:claude-sonnet-4-6', 1);
+    const result = await runEval('/some/plugin', 'my-ws', 'claude:claude-sonnet-4-6', 1);
     expect(result.status).toBe('failed');
     expect(result.error).toContain('parse');
   });
@@ -245,7 +245,7 @@ describe('runEval', () => {
     Bun.spawn = makeMockSpawn('{"status": "pending"}', '', 0);
 
     const { runEval } = await import('./eval-run.ts');
-    const result = await runEval('/some/tile', 'my-ws', 'claude:claude-sonnet-4-6', 1);
+    const result = await runEval('/some/plugin', 'my-ws', 'claude:claude-sonnet-4-6', 1);
     expect(result.status).toBe('failed');
     expect(result.error).toContain('id');
   });
@@ -285,7 +285,7 @@ describe('parseEvalViewOutput', () => {
     });
 
     const { parseEvalViewOutput } = await import('./eval-run.ts');
-    const result = parseEvalViewOutput(viewOutput, '/tile', 'run-123');
+    const result = parseEvalViewOutput(viewOutput, '/plugin', 'run-123');
     expect(result.status).toBe('completed');
     expect(result.overallScore).toBe(80); // 20/25 = 80%
     expect(result.scenarios).toHaveLength(1);
@@ -321,7 +321,7 @@ describe('parseEvalViewOutput', () => {
     });
 
     const { parseEvalViewOutput } = await import('./eval-run.ts');
-    const result = parseEvalViewOutput(viewOutput, '/tile', 'run-456');
+    const result = parseEvalViewOutput(viewOutput, '/plugin', 'run-456');
     expect(result.scenarios).toHaveLength(2);
     expect(result.overallScore).toBe(70); // avg of 60% and 80%
   });
@@ -338,7 +338,7 @@ describe('parseEvalViewOutput', () => {
     });
 
     const { parseEvalViewOutput } = await import('./eval-run.ts');
-    const result = parseEvalViewOutput(viewOutput, '/tile', 'run-789');
+    const result = parseEvalViewOutput(viewOutput, '/plugin', 'run-789');
     expect(result.status).toBe('failed');
   });
 });
@@ -351,7 +351,7 @@ describe('formatEvalComment', () => {
   test('includes eval marker', async () => {
     const { formatEvalComment } = await import('./eval-comment.ts');
     const body = formatEvalComment(
-      [{ tilePath: '/tiles/my-tile', runId: 'run-123', status: 'completed', overallScore: 72, scenarios: [] }],
+      [{ pluginPath: '/plugins/my-plugin', runId: 'run-123', status: 'completed', overallScore: 72, scenarios: [] }],
       false,
     );
     expect(body).toContain('<!-- tessl-skill-eval -->');
@@ -361,7 +361,7 @@ describe('formatEvalComment', () => {
     const { formatEvalComment } = await import('./eval-comment.ts');
     const body = formatEvalComment(
       [{
-        tilePath: '/tiles/my-tile', runId: 'run-123', status: 'completed', overallScore: 75,
+        pluginPath: '/plugins/my-plugin', runId: 'run-123', status: 'completed', overallScore: 75,
         scenarios: [{ name: 'abc12345', baselineScore: 40, withContextScore: 75, delta: 35, criteria: [] }],
       }],
       false,
@@ -377,7 +377,7 @@ describe('formatEvalComment', () => {
     const { formatEvalComment } = await import('./eval-comment.ts');
     const body = formatEvalComment(
       [{
-        tilePath: '/tiles/my-tile', runId: 'run-123', status: 'completed', overallScore: 30,
+        pluginPath: '/plugins/my-plugin', runId: 'run-123', status: 'completed', overallScore: 30,
         scenarios: [{ name: 'abc12345', baselineScore: 50, withContextScore: 30, delta: -20, criteria: [] }],
       }],
       false,
@@ -389,7 +389,7 @@ describe('formatEvalComment', () => {
     const { formatEvalComment } = await import('./eval-comment.ts');
     const body = formatEvalComment(
       [{
-        tilePath: '/tiles/regressed', runId: 'run-1', status: 'completed', overallScore: 30,
+        pluginPath: '/plugins/regressed', runId: 'run-1', status: 'completed', overallScore: 30,
         scenarios: [{ name: 'abc12345', baselineScore: 50, withContextScore: 30, delta: -20, criteria: [] }],
       }],
       true,
@@ -402,7 +402,7 @@ describe('formatEvalComment', () => {
     const { formatEvalComment } = await import('./eval-comment.ts');
     const body = formatEvalComment(
       [{
-        tilePath: '/tiles/regressed', runId: 'run-1', status: 'completed', overallScore: 30,
+        pluginPath: '/plugins/regressed', runId: 'run-1', status: 'completed', overallScore: 30,
         scenarios: [{ name: 'abc12345', baselineScore: 50, withContextScore: 30, delta: -20, criteria: [] }],
       }],
       false,
@@ -415,7 +415,7 @@ describe('formatEvalComment', () => {
     const { formatEvalComment } = await import('./eval-comment.ts');
     const body = formatEvalComment(
       [{
-        tilePath: '/tiles/t', runId: 'run-1', status: 'completed', overallScore: 60,
+        pluginPath: '/plugins/t', runId: 'run-1', status: 'completed', overallScore: 60,
         scenarios: [{
           name: 'scenario1', baselineScore: 40, withContextScore: 60, delta: 20,
           criteria: [{
@@ -438,7 +438,7 @@ describe('formatEvalComment', () => {
   test('shows error for failed eval', async () => {
     const { formatEvalComment } = await import('./eval-comment.ts');
     const body = formatEvalComment(
-      [{ tilePath: '/tiles/broken', runId: 'run-1', status: 'failed', overallScore: -1, scenarios: [], error: 'Auth failed' }],
+      [{ pluginPath: '/plugins/broken', runId: 'run-1', status: 'failed', overallScore: -1, scenarios: [], error: 'Auth failed' }],
       false,
     );
     expect(body).toContain('⚠️');
@@ -474,7 +474,7 @@ describe('generateAndDownloadScenarios', () => {
     Bun.spawn = makeMockSpawn('', 'server error', 1);
 
     const { generateAndDownloadScenarios } = await import('./scenario-generate.ts');
-    const result = await generateAndDownloadScenarios('/tile', 3, 1);
+    const result = await generateAndDownloadScenarios('/plugin', 3, 1);
     expect(result.success).toBe(false);
     expect(result.error).toContain('retries');
   });
@@ -484,7 +484,7 @@ describe('generateAndDownloadScenarios', () => {
     Bun.spawn = makeMockSpawn('{"status": "pending"}', '', 0);
 
     const { generateAndDownloadScenarios } = await import('./scenario-generate.ts');
-    const result = await generateAndDownloadScenarios('/tile', 3, 1);
+    const result = await generateAndDownloadScenarios('/plugin', 3, 1);
     expect(result.success).toBe(false);
     expect(result.error).toContain('id');
   });
@@ -494,7 +494,7 @@ describe('generateAndDownloadScenarios', () => {
     Bun.spawn = makeMockSpawn('no json', '', 0);
 
     const { generateAndDownloadScenarios } = await import('./scenario-generate.ts');
-    const result = await generateAndDownloadScenarios('/tile', 3, 1);
+    const result = await generateAndDownloadScenarios('/plugin', 3, 1);
     expect(result.success).toBe(false);
     expect(result.error).toContain('parse');
   });

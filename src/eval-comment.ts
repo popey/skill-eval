@@ -30,7 +30,7 @@ function evalScoreBadge(score: number): string {
 
 export function formatEvalComment(results: EvalResult[], failOnRegression: boolean): string {
   const sections = results.map((result) => {
-    const displayPath = result.tilePath.replace(/^\.\//, '');
+    const displayPath = result.pluginPath.replace(/^\.\//, '');
 
     if (result.error) {
       return `### \`${displayPath}\`\n\n> ⚠️ **Error:** ${escapeMarkdown(result.error)}\n`;

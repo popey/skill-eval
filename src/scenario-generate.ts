@@ -14,25 +14,25 @@ export function setTimings(poll: number, retryInterval: number, retryTimeout: nu
 }
 
 export interface ScenarioGenerateResult {
-  tilePath: string;
+  pluginPath: string;
   generationId: string;
   success: boolean;
   error?: string;
 }
 
 /**
- * Extract the tile name from a tile path (last directory component).
- * e.g. "discovery" from "discovery" or "tiles/discovery" from "tiles/discovery"
+ * Extract the plugin name from a plugin path (last directory component).
+ * e.g. "discovery" from "discovery" or "plugins/discovery" from "plugins/discovery"
  */
-function tileNameFromPath(tilePath: string): string {
-  return tilePath.replace(/\/+$/, '').split('/').pop() ?? tilePath;
+function pluginNameFromPath(pluginPath: string): string {
+  return pluginPath.replace(/\/+$/, '').split('/').pop() ?? pluginPath;
 }
 
 /**
  * Check `tessl scenario list --mine --json` for an in-progress generation
- * that matches this tile. Returns the generation ID if found, null otherwise.
+ * that matches this plugin. Returns the generation ID if found, null otherwise.
  */
-async function findInProgressGeneration(tileName: string): Promise<string | null> {
+async function findInProgressGeneration(pluginName: string): Promise<string | null> {
   const proc = Bun.spawn(
     ['tessl', 'scenario', 'list', '--mine', '--json'],
     { stdout: 'pipe', stderr: 'pipe' },
@@ -57,9 +57,9 @@ async function findInProgressGeneration(tileName: string): Promise<string | null
     const attrs = run.attributes;
     if (attrs?.status !== 'in_progress') continue;
 
-    // Match by checking if the S3 key contains the tile name
+    // Match by checking if the S3 key contains the plugin name
     const s3Key = attrs.source?.uploadsS3Key ?? '';
-    if (s3Key.includes(`-${tileName}.tar.gz`)) {
+    if (s3Key.includes(`-${pluginName}.tar.gz`)) {
       return run.id;
     }
   }
@@ -70,19 +70,19 @@ async function findInProgressGeneration(tileName: string): Promise<string | null
 /**
  * Attempt to start scenario generation. If the server returns an error
  * (e.g. 500 due to a concurrent generation), check for an in-progress
- * generation for this tile and adopt it. Retries for up to 15 minutes.
+ * generation for this plugin and adopt it. Retries for up to 15 minutes.
  */
 async function startOrAdoptGeneration(
-  tilePath: string,
+  pluginPath: string,
   count: number,
 ): Promise<{ generationId: string } | { error: string }> {
-  const tileName = tileNameFromPath(tilePath);
+  const pluginName = pluginNameFromPath(pluginPath);
   const deadline = Date.now() + GENERATE_RETRY_TIMEOUT_MS;
 
   while (Date.now() < deadline) {
     // Try to start a new generation
     const genProc = Bun.spawn(
-      ['tessl', 'scenario', 'generate', tilePath, '-n', String(count), '--json'],
+      ['tessl', 'scenario', 'generate', pluginPath, '-n', String(count), '--json'],
       { stdout: 'pipe', stderr: 'pipe' },
     );
 
@@ -116,14 +116,14 @@ async function startOrAdoptGeneration(
     core.info(`tessl scenario generate failed (exit ${genExit}): ${stderrTrimmed}`);
     core.info(`stdout was: ${genStdout.trim().slice(0, 200) || '(empty)'}`);
 
-    const existingId = await findInProgressGeneration(tileName);
+    const existingId = await findInProgressGeneration(pluginName);
     if (existingId) {
-      core.info(`Found in-progress generation ${existingId} for tile "${tileName}" — adopting it`);
+      core.info(`Found in-progress generation ${existingId} for plugin "${pluginName}" — adopting it`);
       return { generationId: existingId };
     }
 
     // No in-progress generation found — wait and retry
-    core.info(`No in-progress generation found for "${tileName}". Retrying in ${GENERATE_RETRY_INTERVAL_MS / 1000}s...`);
+    core.info(`No in-progress generation found for "${pluginName}". Retrying in ${GENERATE_RETRY_INTERVAL_MS / 1000}s...`);
     await Bun.sleep(GENERATE_RETRY_INTERVAL_MS);
   }
 
@@ -131,22 +131,22 @@ async function startOrAdoptGeneration(
 }
 
 /**
- * Generate eval scenarios for a tile, poll until complete, then download them.
+ * Generate eval scenarios for a plugin, poll until complete, then download them.
  */
 export async function generateAndDownloadScenarios(
-  tilePath: string,
+  pluginPath: string,
   count: number,
   timeoutMinutes: number,
 ): Promise<ScenarioGenerateResult> {
   const errorResult = (error: string): ScenarioGenerateResult => ({
-    tilePath,
+    pluginPath,
     generationId: '',
     success: false,
     error,
   });
 
   // 1. Start generation (or adopt an existing in-progress one)
-  const startResult = await startOrAdoptGeneration(tilePath, count);
+  const startResult = await startOrAdoptGeneration(pluginPath, count);
   if ('error' in startResult) {
     return errorResult(startResult.error);
   }
@@ -209,7 +209,7 @@ export async function generateAndDownloadScenarios(
   }
 
   // 3. Download scenarios
-  const evalsDir = join(tilePath, 'evals');
+  const evalsDir = join(pluginPath, 'evals');
   const dlProc = Bun.spawn(
     ['tessl', 'scenario', 'download', generationId, '-o', evalsDir, '--json'],
     { stdout: 'pipe', stderr: 'pipe' },
@@ -228,7 +228,7 @@ export async function generateAndDownloadScenarios(
   core.info(`Scenarios downloaded to ${evalsDir}`);
 
   return {
-    tilePath,
+    pluginPath,
     generationId,
     success: true,
   };

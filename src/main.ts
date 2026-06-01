@@ -52,7 +52,7 @@ async function main(): Promise<void> {
     `Found ${changedFiles.length} changed SKILL.md file(s): ${changedFiles.join(', ')}`,
   );
 
-  // 2. Find all tile directories
+  // 2. Find all plugin directories
   const allPluginDirs = findPluginDirs(changedFiles);
   if (allPluginDirs.length === 0) {
     console.log('No plugin directories found. Skipping eval.');
@@ -144,11 +144,11 @@ async function main(): Promise<void> {
     const regressions = evalResults.flatMap((r) =>
       r.scenarios
         .filter((s) => s.delta < 0)
-        .map((s) => ({ tilePath: r.tilePath, scenario: s.name, delta: s.delta })),
+        .map((s) => ({ pluginPath: r.pluginPath, scenario: s.name, delta: s.delta })),
     );
     if (regressions.length > 0) {
       const summary = regressions
-        .map((r) => `  ${r.tilePath} / ${r.scenario}: ${r.delta}%`)
+        .map((r) => `  ${r.pluginPath} / ${r.scenario}: ${r.delta}%`)
         .join('\n');
       core.setFailed(
         `Skill regression: ${regressions.length} scenario(s) scored worse with context than baseline:\n${summary}`,

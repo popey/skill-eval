@@ -28,13 +28,13 @@ function solutionScore(solution: RawSolution): number {
  */
 export function parseEvalViewOutput(
   rawOutput: string,
-  tilePath: string,
+  pluginPath: string,
   runId: string,
 ): EvalResult {
   const jsonStr = extractJson(rawOutput);
   if (!jsonStr) {
     return {
-      tilePath,
+      pluginPath,
       runId,
       status: 'failed',
       overallScore: -1,
@@ -48,7 +48,7 @@ export function parseEvalViewOutput(
     parsed = JSON.parse(jsonStr);
   } catch {
     return {
-      tilePath,
+      pluginPath,
       runId,
       status: 'failed',
       overallScore: -1,
@@ -60,7 +60,7 @@ export function parseEvalViewOutput(
   const attrs = parsed.data?.attributes;
   if (!attrs) {
     return {
-      tilePath,
+      pluginPath,
       runId,
       status: 'failed',
       overallScore: -1,
@@ -71,7 +71,7 @@ export function parseEvalViewOutput(
 
   if (attrs.status === 'failed') {
     return {
-      tilePath,
+      pluginPath,
       runId,
       status: 'failed',
       overallScore: -1,
@@ -114,7 +114,7 @@ export function parseEvalViewOutput(
       : 0;
 
   return {
-    tilePath,
+    pluginPath,
     runId,
     status: 'completed',
     overallScore,
@@ -135,13 +135,13 @@ function extractStatus(rawOutput: string): string | undefined {
 }
 
 export async function runEval(
-  tilePath: string,
+  pluginPath: string,
   workspace: string,
   agent: string,
   timeoutMinutes: number,
 ): Promise<EvalResult> {
   const errorResult = (error: string): EvalResult => ({
-    tilePath,
+    pluginPath,
     runId: '',
     status: 'failed',
     overallScore: -1,
@@ -149,7 +149,7 @@ export async function runEval(
     error,
   });
 
-  const args = ['tessl', 'eval', 'run', tilePath, '--agent', agent, '--json'];
+  const args = ['tessl', 'eval', 'run', pluginPath, '--agent', agent, '--json'];
   if (workspace) {
     args.splice(4, 0, '--workspace', workspace);
   }
@@ -214,14 +214,14 @@ export async function runEval(
     }
 
     if (status === 'completed' || status === 'failed') {
-      return parseEvalViewOutput(viewStdout, tilePath, runId);
+      return parseEvalViewOutput(viewStdout, pluginPath, runId);
     }
 
     core.info(`Eval ${runId}: ${status}... waiting`);
   }
 
   return {
-    tilePath,
+    pluginPath,
     runId,
     status: 'timeout',
     overallScore: -1,
