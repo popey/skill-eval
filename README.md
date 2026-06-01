@@ -1,6 +1,6 @@
 # Tessl Skill Eval Action
 
-A GitHub Action that runs Tessl evals against tiles when `SKILL.md` files change in a pull request, and posts the results as a PR comment with per-scenario scoring.
+A GitHub Action that runs Tessl evals against plugins when `SKILL.md` files change in a pull request, and posts the results as a PR comment with per-scenario scoring.
 
 Requires a `TESSL_TOKEN` to authenticate with the Tessl API. The GitHub-provided `GITHUB_TOKEN` is used for posting PR comments.
 
@@ -28,7 +28,7 @@ jobs:
           tessl-token: ${{ secrets.TESSL_TOKEN }}
 ```
 
-Any PR that modifies a `SKILL.md` file in a tile with eval scenarios will trigger an eval run and post results as a PR comment.
+Any PR that modifies a `SKILL.md` file in a plugin with eval scenarios will trigger an eval run and post results as a PR comment.
 
 ## Inputs
 
@@ -38,12 +38,12 @@ Any PR that modifies a `SKILL.md` file in a tile with eval scenarios will trigge
 | `skip-label` | PR label that skips eval even when enabled. Set empty to disable. | `skip-eval` |
 | `path` | Root path to search for SKILL.md files | `.` |
 | `comment` | Whether to post results as a PR comment | `true` |
-| `eval-workspace` | Tessl workspace name. Optional when tiles set workspace in `tile.json`. | `''` |
+| `eval-workspace` | Tessl workspace name. Optional when plugins have workspace set in `.tessl-plugin/plugin.json`. | `''` |
 | `eval-agent` | Agent:model pair for evals | `claude:claude-sonnet-4-6` |
 | `eval-timeout` | Max minutes to wait for each eval run to complete | `45` |
 | `eval-fail-on-regression` | Fail the check if any scenario scores worse with context than baseline | `true` |
-| `eval-generate-scenarios` | Generate fresh scenarios for tiles without `evals/` | `false` |
-| `eval-scenario-count` | Number of scenarios to generate per tile | `3` |
+| `eval-generate-scenarios` | Generate fresh scenarios for plugins without `evals/` | `false` |
+| `eval-scenario-count` | Number of scenarios to generate per plugin | `3` |
 | `eval-commit-scenarios` | Commit generated scenarios back to the PR branch (requires `contents: write`) | `false` |
 | `tessl-token` | Tessl API token. Pass via secrets. | **(required)** |
 
@@ -51,8 +51,8 @@ Any PR that modifies a `SKILL.md` file in a tile with eval scenarios will trigge
 
 1. Detects which `SKILL.md` files were changed in the PR
 2. Installs the [Tessl CLI](https://tessl.io) and authenticates with your token
-3. Finds parent tile directories (containing `tile.json`) with eval scenarios
-4. Runs `tessl eval run` for each tile and polls for results
+3. Finds parent plugin directories (containing `.tessl-plugin/plugin.json`) with eval scenarios
+4. Runs `tessl eval run` for each plugin and polls for results
 5. Posts (or updates) an eval comment on the PR with per-scenario scores
 
 ## Skipping evals
@@ -81,7 +81,7 @@ The action posts a single eval comment per PR. On subsequent pushes, it updates 
 
 ### Generating scenarios on-the-fly
 
-Instead of relying on pre-existing scenarios in `evals/`, you can generate fresh scenarios from your tile before running evals:
+Instead of relying on pre-existing scenarios in `evals/`, you can generate fresh scenarios from your plugin before running evals:
 
 ```yaml
 - uses: tesslio/skill-eval@main
@@ -93,20 +93,22 @@ Instead of relying on pre-existing scenarios in `evals/`, you can generate fresh
 ```
 
 When `eval-generate-scenarios` is enabled, the action will:
-1. Find all tile directories (not just those with existing `evals/`)
-2. Run `tessl scenario generate` to create fresh scenarios for each tile
-3. Download the generated scenarios to the tile's `evals/` directory
+1. Find all plugin directories (not just those with existing `evals/`)
+2. Run `tessl scenario generate` to create fresh scenarios for each plugin
+3. Download the generated scenarios to the plugin's `evals/` directory
 4. Run evals against the newly generated scenarios
 
-This is useful for tiles that don't have checked-in scenarios, or when you want to evaluate against fresh scenarios generated from the current tile state.
+This is useful for plugins that don't have checked-in scenarios, or when you want to evaluate against fresh scenarios generated from the current plugin state.
 
 ### How eval detection works
 
-When evals are enabled, the action walks up from each changed `SKILL.md` file to find the parent tile directory (a directory containing `tile.json`). The search checks up to **5 parent directories** — if your `SKILL.md` is nested deeper than that relative to `tile.json`, the tile won't be detected (a warning is logged). If that tile directory also contains an `evals/` subdirectory with scenario files, the tile is included in the eval run. Tiles without an `evals/` directory are skipped.
+When evals are enabled, the action walks up from each changed `SKILL.md` file to find the parent plugin directory (a directory containing `.tessl-plugin/plugin.json`). The search checks up to **5 parent directories** — if your `SKILL.md` is nested deeper than that relative to `.tessl-plugin/plugin.json`, the plugin won't be detected (a warning is logged). If that plugin directory also contains an `evals/` subdirectory with scenario files, the plugin is included in the eval run. Plugins without an `evals/` directory are skipped.
+
+Repos that haven't yet migrated from `tile.json` to `.tessl-plugin/plugin.json` continue to work — the action accepts both as valid plugin roots.
 
 ### Timeouts and long-running jobs
 
-Scenario generation and eval execution each apply the `eval-timeout` independently. With `eval-generate-scenarios` enabled, the total wall time can be up to **2x** the timeout value — for example, with the default 45 minutes, generation could take up to 45 minutes and eval execution another 45 minutes, for a possible total of ~90 minutes per tile.
+Scenario generation and eval execution each apply the `eval-timeout` independently. With `eval-generate-scenarios` enabled, the total wall time can be up to **2x** the timeout value — for example, with the default 45 minutes, generation could take up to 45 minutes and eval execution another 45 minutes, for a possible total of ~90 minutes per plugin.
 
 Scenario generation polls every 15 seconds; eval execution polls every 30 seconds. Plan your GitHub Actions [job timeout](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idtimeout-minutes) accordingly:
 
@@ -117,7 +119,7 @@ jobs:
     timeout-minutes: 120  # allow headroom for generation + eval
 ```
 
-For tiles with pre-existing scenarios (no generation), the total time is just the eval timeout.
+For plugins with pre-existing scenarios (no generation), the total time is just the eval timeout.
 
 ### Setting up the TESSL_TOKEN secret
 

@@ -73,7 +73,7 @@ export function formatEvalComment(results: EvalResult[], failOnRegression: boole
   const footer = [
     '---',
     '',
-    'To improve your eval scores, run `tessl eval compare` locally for a detailed breakdown. Need help? Jump on our [Discord](https://discord.gg/jbb2vHnHZQ).',
+    'To improve your eval scores, run `tessl eval view --last` locally for a detailed breakdown. Need help? Jump on our [Discord](https://discord.gg/jbb2vHnHZQ).',
     '',
     '<details>',
     '<summary>Feedback</summary>',
